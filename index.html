@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>세자리 곱하기 한자리</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ece9e6, #ffffff);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .hidden {
+            display: none;
+        }
+        #start-screen, #game-screen, #end-screen {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        #start-screen h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .difficulty-button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .difficulty-button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+        #game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            color: #333;
+        }
+        #energy-bar {
+            width: 100%;
+            height: 25px;
+            background-color: #ddd;
+            border-radius: 12.5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+        }
+        #energy {
+            height: 100%;
+            width: 100%;
+            background-color: #76c7c0;
+            transition: width 0.1s linear;
+        }
+        #question {
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            color: #333;
+        }
+        #answer-input {
+            width: calc(100% - 40px);
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 1.2em;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        #submit-answer {
+            padding: 15px 30px;
+            margin-top: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        #submit-answer:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+        #score, #lives, #game-time {
+            font-size: 1.2em;
+            color: #333;
+        }
+        #end-screen h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        #end-screen p {
+            font-size: 1.3em;
+            margin: 10px 0;
+            color: #555;
+        }
+        #restart-button {
+            padding: 15px 30px;
+            margin-top: 25px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #2196F3;
+            color: white;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        #restart-button:hover {
+            background-color: #0b7dda;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1>세자리 곱하기 한자리</h1>
+        <p>이름을 입력하세요:</p>
+        <input type="text" id="player-name" placeholder="이름을 입력하세요" />
+        <p>난이도를 선택하세요:</p>
+        <button class="difficulty-button" data-difficulty="최상">최상</button>
+        <button class="difficulty-button" data-difficulty="상">상</button>
+        <button class="difficulty-button" data-difficulty="중">중</button>
+        <button class="difficulty-button" data-difficulty="하">하</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="hidden">
+        <div id="game-info">
+            <div id="score">점수: 0</div>
+            <div id="lives">남은 기회: 3</div>
+            <div id="game-time">총 시간: 0초</div>
+        </div>
+        <div id="energy-bar">
+            <div id="energy"></div>
+        </div>
+        <div id="question">문제가 여기 표시됩니다.</div>
+        <input type="text" id="answer-input" placeholder="정답을 입력하세요" />
+        <button id="submit-answer">제출</button>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="hidden">
+        <h2>게임 종료!</h2>
+        <p id="final-score">최종 점수: 0</p>
+        <p id="final-time">총 시간: 0초</p>
+        <button id="restart-button">다시 시작</button>
+        <div id="response"></div>
+    </div>
+
+    <script>
+        let playerName = '';
+        let currentQuestion = null;
+        let score = 0;
+        let lives = 3;
+        let startTime;
+
+        document.querySelectorAll('.difficulty-button').forEach(button => {
+            button.addEventListener('click', () => {
+                playerName = document.getElementById('player-name').value.trim();
+                if (!playerName) {
+                    alert('이름을 입력하세요.');
+                    return;
+                }
+                startGame(button.dataset.difficulty);
+            });
+        });
+
+        function startGame(difficulty) {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            startTime = Date.now();
+            generateQuestion();
+        }
+
+        function generateQuestion() {
+            const num1 = Math.floor(100 + Math.random() * 900); // 세자리 숫자
+            const num2 = Math.floor(1 + Math.random() * 9);     // 한자리 숫자
+            currentQuestion = { num1, num2 };
+            document.getElementById('question').innerText = `${num1} x ${num2} = ?`;
+        }
+
+        document.getElementById('submit-answer').addEventListener('click', () => {
+            const answer = parseInt(document.getElementById('answer-input').value, 10);
+            if (answer === currentQuestion.num1 * currentQuestion.num2) {
+                score += 10;
+                document.getElementById('score').innerText = `점수: ${score}`;
+                generateQuestion();
+            } else {
+                lives -= 1;
+                document.getElementById('lives').innerText = `남은 기회: ${lives}`;
+                if (lives === 0) {
+                    endGame();
+                }
+            }
+            document.getElementById('answer-input').value = '';
+        });
+
+        function endGame() {
+            const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `최종 점수: ${score}`;
+            document.getElementById('final-time').innerText = `총 시간: ${elapsedTime}초`;
+
+            // Save data to server
+            saveData('세자리 곱하기 한자리', playerName, score, elapsedTime);
+        }
+
+        async function saveData(game, name, score, elapsedTime) {
+            const FUNCTION_URL = "https://us-central1-record-f420d.cloudfunctions.net/report";
+
+            const requestData = {
+                game,
+                name,
+                score: parseInt(score, 10),
+                elapsedTime: parseInt(elapsedTime, 10)
+            };
+
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const responseData = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('response').innerText = 
+                        `성공: ${JSON.stringify(responseData, null, 2)}`;
+                } else {
+                    document.getElementById('response').innerText = 
+                        `오류: ${JSON.stringify(responseData, null, 2)}`;
+                }
+            } catch (error) {
+                console.error('요청 실패:', error);
+                document.getElementById('response').innerText = 
+                    `네트워크 오류: ${error.message}`;
+            }
+        }
+
+    </script>
+</body>
+</html>
